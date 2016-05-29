@@ -28,4 +28,9 @@ stdenv.mkDerivation {
 
   buildFlags = "LUA_DIR=${lua} X11_PREFIX=/no-such-path PREFIX=\${out}";
   installFlags = "PREFIX=\${out}";
+
+  postInstall = ''
+    ln $out/lib/notion/bin/notionflux $out/bin
+  '';
+
 }
