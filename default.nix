@@ -18,4 +18,6 @@ rec {
   notion = callPackage ./notion { enableXft = false; } ;
 
   selfspy = callPackage ./selfspy {} ;
+
+  dateutils = callPackage ./dateutils {} ;
 }
