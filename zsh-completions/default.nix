@@ -12,7 +12,6 @@ stdenv.mkDerivation rec {
   buildInputs = [ ];
 
   installPhase= ''
-    targetDir=$out/share/zsh/site-functions
     install -D --target-directory=$out/share/zsh/site-functions src/*
   '';  
   
