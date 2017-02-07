@@ -20,4 +20,6 @@ rec {
   selfspy = callPackage ./selfspy {} ;
 
   dateutils = callPackage ./dateutils {} ;
+
+  tewi-font-unstable = callPackage ./tewi-font {} ;
 }
