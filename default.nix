@@ -22,4 +22,7 @@ rec {
   dateutils = callPackage ./dateutils {} ;
 
   tewi-font-unstable = callPackage ./tewi-font {} ;
+
+  way-cooler = callPackage ./way-cooler {} ;
+  
 }
