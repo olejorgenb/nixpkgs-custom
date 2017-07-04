@@ -24,5 +24,7 @@ rec {
   tewi-font-unstable = callPackage ./tewi-font {} ;
 
   way-cooler = callPackage ./way-cooler {} ;
+
+  hubic = callPackage ./hubic {} ;
   
 }
