@@ -37,5 +37,7 @@ rec {
   way-cooler = callPackage ./way-cooler {} ;
 
   hubic = callPackage ./hubic {} ;
+
+  prll = callPackage ./prll {} ;
   
 }
