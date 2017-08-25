@@ -1,0 +1,78 @@
+=== src/cstream.c
+==================================================================
+--- src/cstream.c	(revision 6)
++++ src/cstream.c	(revision 7)
+@@ -406,19 +406,17 @@
+ }
+ 
+ #ifdef MACOS
+-static CInfoPBRec myblock;
+-
+-OSErr get_info_block(const char* pathname) {
++OSErr get_info_block(const char* pathname, CInfoPBRec* myblock) {
+ 	static WDPBRec mywd;
+ 	OSErr e;
+ 
+ 	e = PBHGetVol(&mywd, 0);
+ 	if (e) return e;
+ 	pathname = c2pstr(pathname);
+-	myblock.hFileInfo.ioNamePtr = pathname;
+-	myblock.hFileInfo.ioVRefNum = mywd.ioVRefNum;
+-	myblock.hFileInfo.ioDirID = mywd.ioWDDirID;
+-	e=PBGetCatInfo(&myblock, 0);
++	myblock->hFileInfo.ioNamePtr = pathname;
++	myblock->hFileInfo.ioVRefNum = mywd.ioVRefNum;
++	myblock->hFileInfo.ioDirID = mywd.ioWDDirID;
++	e=PBGetCatInfo(myblock, 0);
+ 	pathname = p2cstr(pathname);
+ 	return e;
+ }
+@@ -427,7 +425,8 @@
+ time_t cis_mod_time(CIStream s) {
+   if ( s != NULL && s->fs != NULL && s->pathname != NULL ) {
+ #ifdef MACOS
+-    if (get_info_block(s->pathname)==0)
++    CInfoPBRec myblock;
++    if (get_info_block(s->pathname, &myblock)==0)
+       return myblock.hFileInfo.ioFlMdDat;
+     else return 0;
+ #else
+@@ -441,7 +440,8 @@
+ 
+ char probe_pathname(const char* pathname) {
+ #ifdef MACOS
+-    if (get_info_block(pathname)==0) {
++    CInfoPBRec myblock;
++    if (get_info_block(pathname, &myblock)==0) {
+       if (myblock.hFileInfo.ioFlAttrib & 16)
+ 	return 'D'; /* Directory */
+       else return 'F';        /* File */
+@@ -644,11 +644,9 @@
+ }
+ 
+ #ifdef LUA
+-static char *emptystring="";
+-
+ const char* cos_whole_string ( COStream s, size_t* length ) {
+   if ( s == NULL )
+-    return emptystring;
++    return NULL;
+   else {
+     assert( is_string_stream(s) );
+ 	/* *s->next='\0'; */ /*Not needed since lua can handle length-defined strings */
+=== src/gel_bind.c
+==================================================================
+--- src/gel_bind.c	(revision 6)
++++ src/gel_bind.c	(revision 7)
+@@ -412,7 +412,10 @@
+   if (vli_success && vli_return) {
+     size_t len = 0;
+     const char* str = cos_whole_string(vlp_outstream, &len);
+-    lua_pushlstring(L,str,len);
++    if(str)
++        lua_pushlstring(L,str,len);
++    else
++        lua_pushstring(L,"");
+   } else
+     lua_pushstring(L,"");
+    

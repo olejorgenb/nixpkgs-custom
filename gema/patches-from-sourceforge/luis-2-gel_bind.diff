@@ -1,0 +1,27 @@
+--- ../../../gema/src/gel_bind.c	2004-01-17 10:59:19.000000000 -0600
++++ ./gel_bind.c	2006-09-16 16:08:40.750000000 -0500
+@@ -106,7 +106,7 @@
+   {"string", luaopen_string},
+   {"math", luaopen_math},
+   {"debug", luaopen_debug},
+-  {"loadlib", luaopen_loadlib},
++  {"package", luaopen_package},
+   {"gel", gel_libopen},
+   {NULL, NULL}
+ };
+@@ -654,7 +654,7 @@
+   
+ /*  dbg_printf(0,("---\ncmd: %s (stack:%d) (out: %x)\n",luacode,top,vgp_outstream));*/
+ 
+-  status = lua_dostring(L,luacode);
++  status = lua_tostring(L,luacode); /* jlrnkludge */
+ 
+ /*  dbg_printf(0,("executed: %d (stack:%d)\n",status,lua_gettop(L)));*/
+ 
+@@ -678,4 +678,4 @@
+   
+ }
+ 
+-#endif
+\ No newline at end of file
++#endif

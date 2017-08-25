@@ -1,0 +1,20 @@
+diff --git a/src/gbuild b/src/gbuild
+old mode 100644
+new mode 100755
+index 88a6a7b..ffdaa40
+--- a/src/gbuild
++++ b/src/gbuild
+@@ -29,10 +29,10 @@ SHRINK="strip \$@"                 # How to reduce size when installing
+ AR="ar rcu"                        # How to create libraries
+ RANLIB="ranlib \$@"                # Optional library indexing
+ 
+-INSTALLDIR=/usr/local              # Where to install executables
++INSTALLDIR=${INSTALLDIR:-/usr/local}         # Where to install executables
+ 
+-LUALIBPATH=/usr/local/lib          # Where to search for Lua libraries
+-LUAINCPATH=/usr/local/include      # Where to search for Lua includes
++LUALIBPATH=${LUALIBPATH:-/usr/local/lib}     # Where to search for Lua libraries
++LUAINCPATH=${LUAINCPATH:-/usr/local/include} # Where to search for Lua includes
+ 
+ #-DBGFLAG=
+ DBGFLAG=-DNDEBUG                   # Exclude debugging code?

@@ -1,0 +1,19 @@
+--- ../../../gema/src/makefile	2003-12-28 09:22:10.000000000 -0600
++++ ./makefile	2006-09-16 14:40:54.375000000 -0500
+@@ -71,14 +74,14 @@
+ 	$(CC) $(CCF) -o gema $(OBJS) $(LIBS)
+ 
+ gel$(EXE): conf.x libgel.a l_gema.o
+-	$(CC) $(LCCF) -o gel l_gema.o -L. -lgel $(LIBS) -llua -llualib
++	$(CC) $(LCCF) -o gel l_gema.o -L. -lgel $(LIBS) -llua # -llualib
+ 
+ libgel.a: conf.x $(LOBJS)
+ 	$(AR) $@ $(LOBJS)
+ 	$(RANLIB)
+ 
+ gua$(EXE): conf.x libgel.a l_gua.o
+-	$(CC) $(LCCF) -o gua l_gua.o -L. -lgel $(LIBS) -llua -llualib
++	$(CC) $(LCCF) -o gua l_gua.o -L. -lgel $(LIBS) -llua # -llualib
+ 
+ clean:
+ 	@rm -f ../test/tf???.* ../test/test*.out *.x

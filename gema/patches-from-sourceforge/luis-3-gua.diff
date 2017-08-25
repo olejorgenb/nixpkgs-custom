@@ -1,0 +1,30 @@
+--- ../../../gema/src/gua.c	2003-12-27 04:57:51.000000000 -0600
++++ ./gua.c	2006-09-16 15:27:40.562500000 -0500
+@@ -74,7 +74,7 @@
+   {"string", luaopen_string},
+   {"math", luaopen_math},
+   {"debug", luaopen_debug},
+-  {"loadlib", luaopen_loadlib},
++  {"package", luaopen_package},
+   /* add your libraries here */
+   LUA_EXTRALIBS
+   {NULL, NULL}
+@@ -258,7 +258,8 @@
+ static int load_string (void) {
+   int status;
+   lua_settop(L, 0);
+-  if (lua_readline(L, get_prompt(1)) == 0)  /* no input? */
++  const char *prmt = get_prompt(1); /* jlrnkludge */
++  if (lua_readline(L, get_prompt(1), prmt) == 0) /* no input? */
+     return -1;
+   if (lua_tostring(L, -1)[0] == '=') {  /* line starts with `=' ? */
+     lua_pushfstring(L, "return %s", lua_tostring(L, -1)+1);/* `=' -> `return' */
+@@ -267,7 +268,7 @@
+   for (;;) {  /* repeat until gets a complete line */
+     status = luaL_loadbuffer(L, lua_tostring(L, 1), lua_strlen(L, 1), "=stdin");
+     if (!incomplete(status)) break;  /* cannot try to add lines? */
+-    if (lua_readline(L, get_prompt(0)) == 0)  /* no more input? */
++    if (lua_readline(L, get_prompt(0), prmt) == 0)  /* no more input? */
+       return -1;
+     lua_concat(L, lua_gettop(L));  /* join lines */
+   }

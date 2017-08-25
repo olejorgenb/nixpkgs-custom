@@ -39,5 +39,7 @@ rec {
   hubic = callPackage ./hubic {} ;
 
   prll = callPackage ./prll {} ;
+
+  gema = callPackage ./gema {} ;
   
 }

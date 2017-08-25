@@ -1,0 +1,290 @@
+=== src/cstream.c
+==================================================================
+--- src/cstream.c	(revision 5)
++++ src/cstream.c	(revision 6)
+@@ -182,6 +182,7 @@
+ #endif
+       return EOF;
+     }
++/* XXX: Huh? */
+ #if LUA
+     if ( (s->next > s->start) && (s->next[-1] == '\n') ) {
+ #else
+@@ -625,7 +626,9 @@
+    newsize = oldsize + more;
+    n = s->next - s->start;
+ #ifdef LUA
+-     x = realloc( s->start, newsize + 1 );
++/* WHY + 1.. removing... presuming space for null */
++/*     x = realloc( s->start, newsize + 1 );*/
++     x = realloc( s->start, newsize );
+ #else
+      x = realloc( s->start, newsize );
+ #endif
+@@ -643,12 +646,13 @@
+ #ifdef LUA
+ static char *emptystring="";
+ 
+-char* cos_whole_string ( COStream s ) {
++const char* cos_whole_string ( COStream s, size_t* length ) {
+   if ( s == NULL )
+     return emptystring;
+   else {
+     assert( is_string_stream(s) );
+-	*s->next='\0';
++	/* *s->next='\0'; */ /*Not needed since lua can handle length-defined strings */
++    *length = s->next - s->start;
+     return (char*)(s->start);
+   }
+ }
+=== src/gel_bind.c
+==================================================================
+--- src/gel_bind.c	(revision 5)
++++ src/gel_bind.c	(revision 6)
+@@ -100,13 +100,6 @@
+ static lua_State *L = NULL;
+ 
+ static const luaL_reg lualibs[] = {
+-  {"base", luaopen_base},
+-  {"table", luaopen_table},
+-  {"io", luaopen_io},
+-  {"string", luaopen_string},
+-  {"math", luaopen_math},
+-  {"debug", luaopen_debug},
+-  {"loadlib", luaopen_loadlib},
+   {"gel", gel_libopen},
+   {NULL, NULL}
+ };
+@@ -155,16 +148,23 @@
+   L=LS;
+   return 0;
+ }
++/*
++ * Entry point for Lua 5.1 require
++ */
++int luaopen_gel (lua_State* L) {
++  return gel_init(L);
++}
+ 
++
+ static int init_lua()
+ {
+   const luaL_reg *lib = lualibs;
+ 
+-  L = lua_open();  /* create state */
++  L = luaL_newstate();  /* create state */
++  luaL_openlibs(L);  /* Load the base LUA libraries */
+   if (L) {
+     for (; lib->func; lib++) {
+-      lib->func(L);  /* open library */
+-      lua_settop(L, 0);  /* discard any results */
++      lua_cpcall(L, lib->func, NULL); /* Load the libs in protected mode (5.1 method) */
+     }
+   }
+ 
+@@ -237,7 +237,7 @@
+   const char *vlpc_var=NULL;
+   const char *vlpc_val=NULL;
+   char buf[20];
+-  int  length;
++  size_t  length;
+   
+   buf[0] = '.'; buf[1] = '\0';buf[2] = '\0';buf[3] = '\0';
+ 
+@@ -346,9 +346,9 @@
+   void *vlp_domain=NULL;
+   
+ 
+-  char *vlpc_in  =NULL;  
+-  char *vlpc_out =NULL;  
+-  char *vlpc_dom =NULL;  
++  const char *vlpc_in  =NULL;
++  const char *vlpc_out =NULL;
++  const char *vlpc_dom =NULL;
+ 
+   int vli_return=0;
+   int vli_success=0;
+@@ -356,10 +356,10 @@
+   if (type == 'm')
+ 	vlp_instream=lua_touserdata(L, 1);
+   else
+-    vlpc_in =(char *)lua_tostring(L, 1);
++    vlpc_in =lua_tostring(L, 1);
+ 
+-  vlpc_out =(char *)lua_tostring(L, 3);
+-  vlpc_dom =(char *)lua_tostring(L, 2);
++  vlpc_out =lua_tostring(L, 3);
++  vlpc_dom =lua_tostring(L, 2);
+ 
+   if (!vlpc_dom) vlpc_dom=vgpc_emptystr;
+ 
+@@ -409,9 +409,11 @@
+ 
+   lua_settop(L,0);
+ 
+-  if (vli_success && vli_return)
+-    lua_pushstring(L,(const char *)cos_whole_string(vlp_outstream));
+-  else
++  if (vli_success && vli_return) {
++    size_t len = 0;
++    const char* str = cos_whole_string(vlp_outstream, &len);
++    lua_pushlstring(L,str,len);
++  } else
+     lua_pushstring(L,"");
+    
+ 
+@@ -654,7 +656,7 @@
+   
+ /*  dbg_printf(0,("---\ncmd: %s (stack:%d) (out: %x)\n",luacode,top,vgp_outstream));*/
+ 
+-  status = lua_dostring(L,luacode);
++  status = luaL_dostring(L,luacode);
+ 
+ /*  dbg_printf(0,("executed: %d (stack:%d)\n",status,lua_gettop(L)));*/
+ 
+@@ -678,4 +680,4 @@
+   
+ }
+ 
+-#endif
+\ No newline at end of file
++#endif
+=== src/cstream.h
+==================================================================
+--- src/cstream.h	(revision 5)
++++ src/cstream.h	(revision 6)
+@@ -37,6 +37,11 @@
+ int cis_peek(CIStream s);
+ int cis_prevch(CIStream s);
+ 
++#if LUA
++/* Detect end-of-file */
++int cis_eof(CIStream s);
++#endif
++
+ /* remember current position */
+ void cis_mark(CIStream s, MarkBuf* b);
+ 
+@@ -123,6 +128,9 @@
+ /* create buffer to hold output and then read it back in */
+ COStream make_buffer_output_stream(void);
+ CIStream convert_output_to_input( COStream out );
++#ifdef LUA
++const char* cos_whole_string ( COStream s, size_t* length );
++#endif
+ char* cis_whole_string ( CIStream in );
+ unsigned cis_length( CIStream in );
+ 
+=== src/read.c
+==================================================================
+--- src/read.c	(revision 5)
++++ src/read.c	(revision 6)
+@@ -82,6 +82,10 @@
+ #include "main.h"  /* for EXS_SYNTAX */
+ #include "var.h"	/* for get_var */
+ 
++#ifdef LUA
++void dolua(CIStream in, COStream out,char *luacode);
++#endif
++
+ boolean line_mode = FALSE;
+ boolean token_mode = FALSE;
+ 
+=== src/action.c
+==================================================================
+--- src/action.c	(revision 5)
++++ src/action.c	(revision 6)
+@@ -69,6 +69,10 @@
+ #include <locale.h>	/* for setlocale */
+ #endif
+ 
++#ifdef LUA
++void dolua(CIStream in, COStream out,char *luacode);
++#endif
++
+ int wrap_column = 80;
+ char* wrap_indent = NULL;
+ static unsigned wrap_indent_length = 0;
+@@ -530,7 +534,7 @@
+ #ifdef LUA	
+ 	case OP_LUA: {
+ 	  char buf[32];
+- 	  set_var( ".l",buf,sprintf(buf,"%d",cis_line(input_stream)));
++ 	  set_var( ".l",buf,sprintf(buf,"%ld",cis_line(input_stream)));
+  	  set_var( ".c",buf,sprintf(buf,"%d",cis_column(input_stream)));
+ 	  inbuf = function_operand( &as, args );
+ 	  dolua(input_stream,out, cis_whole_string(inbuf));
+=== src/gbuild
+==================================================================
+--- src/gbuild	(revision 5)
++++ src/gbuild	(revision 6)
+@@ -24,6 +24,7 @@
+ CCFLAGS=-O                         # Flags for the compiler
+ LIBS="-lm"                         # libs to add when linking
+ EXE=""                             # Extension used to identify executables
++DLL=".so"
+ 
+ SHRINK="strip \$@"                 # How to reduce size when installing
+ AR="ar rcu"                        # How to create libraries
+@@ -98,6 +99,7 @@
+           
+     MINGW*) SYS=mingw;
+             EXE='.exe';
++            DLL='.so';
+             LIBS='' ;
+             upx -V 2>/dev/null >/dev/null
+             if [ $? = 0 ] ; then
+@@ -170,6 +172,7 @@
+   echo "CCFLAGS=$CCFLAGS"        >>conf
+   echo "LIBS=$LIBS"              >>conf
+   echo "EXE=$EXE"                >>conf
++  echo "DLL=$DLL"                >>conf
+   echo "OBJ=$OBJ"                >>conf
+   echo "SHRINK=$SHRINK"          >>conf
+   echo "AR=$AR"                  >>conf
+=== src/Makefile
+==================================================================
+--- src/Makefile	(revision 5)
++++ src/Makefile	(revision 6)
+@@ -31,8 +31,8 @@
+ # .% Finalize macros
+ 
+ CCF = $(CCFLAGS) $(TRCFLAG) $(DBGFLAG)
+-LCCF= $(CCF) -DLUA -I$(LUAINCPATH) -L$(LUALIBPATH)
+-ALL = gema$(EXE) $(LUAEXE)
++LCCF= $(CCF) -DLUA -I$(LUAINCPATH) -L$(LUALIBPATH) -fPIC
++ALL = gema$(EXE) $(LUAEXE) gel$(DLL)
+ TEST= t_gema $(LUATEST)
+ 
+ # .% Object files
+@@ -68,23 +68,26 @@
+ all: $(ALL)
+ 
+ gema$(EXE): conf.x $(OBJS)
+-	$(CC) $(CCF) -o gema $(OBJS) $(LIBS)
++	$(CC) $(CCF) -o gema$(EXE) $(OBJS) $(LIBS)
+ 
+ gel$(EXE): conf.x libgel.a l_gema.o
+-	$(CC) $(LCCF) -o gel l_gema.o -L. -lgel $(LIBS) -llua -llualib
++	$(CC) $(LCCF) -o gel$(EXE) l_gema.o -L. -lgel $(LIBS) -llua
+ 
+ libgel.a: conf.x $(LOBJS)
+ 	$(AR) $@ $(LOBJS)
+ 	$(RANLIB)
+ 
++gel$(DLL): conf.x $(LOBJS)
++	$(CC) $(LCCF) -o gel$(DLL) -shared -L. $(LOBJS)
++
+ gua$(EXE): conf.x libgel.a l_gua.o
+-	$(CC) $(LCCF) -o gua l_gua.o -L. -lgel $(LIBS) -llua -llualib
++	$(CC) $(LCCF) -o gua$(EXE) l_gua.o -L. -lgel $(LIBS) -llua
+ 
+ clean:
+ 	@rm -f ../test/tf???.* ../test/test*.out *.x
+ 	@rm -f conf conf.bat
+ 	@rm -f *.o libgel.a libgel.lib
+-	@rm -f gel$(EXE) gua$(EXE) gema$(EXE)
++	@rm -f gel$(EXE) gua$(EXE) gema$(EXE) gel$(DLL)
+ 	@echo >conf
+ 	@echo "Cleaned up"
+ 
