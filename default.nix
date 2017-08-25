@@ -5,12 +5,22 @@ with import <nixpkgs> {};
 #
 # Note that notion also use a hard-coded source path
 
+let
+  callPackageIfPresent = path: args:
+    if builtins.pathExists path then
+      callPackage path args
+    else
+      abort "${toString path} not found"
+    ;
+
+in
+
 rec {
   data_hacks = callPackage ./data_hacks {} ;
 
   gpp = callPackage ./gpp {} ;
 
-  idle_logger = callPackage ~/src/idle_logger {} ;
+  idle_logger = callPackageIfPresent ~/src/idle_logger {} ;
 
   zsh-completions = callPackage ./zsh-completions {} ;
 
