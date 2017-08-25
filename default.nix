@@ -29,6 +29,7 @@ rec {
 
   selfspy = callPackage ./selfspy {} ;
 
+  # Also in nixpkgs
   dateutils = callPackage ./dateutils {} ;
 
   tewi-font-unstable = callPackage ./tewi-font {} ;
